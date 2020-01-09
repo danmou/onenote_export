@@ -1,8 +1,4 @@
-## Output
-The notebooks will each become a subdirectory of the `output` folder, with further subdirectories 
-for the sections within each notebook and the pages within each section. Each page is a directory 
-containing the HTML file `main.html` and two directories `images` and `attachments` (if necessary) 
-for the images and attachments. Any sub-pages will be subdirectories within this one.
+This Python script exports all the OneNote notebooks linked to your Microsoft account to HTML files.
 
 ## Setup
 In order to run the script, you must first do the following:
@@ -28,6 +24,12 @@ In your browser navigate to http://localhost:5000 and log in to your Microsoft a
 The first time you do it, you will also have to accept that the app can read your OneNote notes. 
 (This does not give any third parties access to your data, as long as you don't share the client id 
 and secret you created on the Azure portal). After this, go back to the terminal to follow the progress.
+
+## Output
+The notebooks will each become a subdirectory of the `output` folder, with further subdirectories 
+for the sections within each notebook and the pages within each section. Each page is a directory 
+containing the HTML file `main.html` and two directories `images` and `attachments` (if necessary) 
+for the images and attachments. Any sub-pages will be subdirectories within this one.
 
 ## Note
 Microsoft limits how many requests you can do within a given time period. Therefore, if you have many 
