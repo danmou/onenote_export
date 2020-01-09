@@ -1,7 +1,6 @@
 import os
 import random
 import re
-import shutil
 import string
 import time
 import uuid
@@ -76,7 +75,7 @@ def get(graph_client, url, params=None):
         elif resp.status_code == 500:
             # In my case, one specific note page consistently gave this status
             # code when trying to get the content. The error was "19999:
-            # Something failed, the API cannot share any more information 
+            # Something failed, the API cannot share any more information
             # at the time of the request."
             print('        Error 500, skipping this page.')
             return None
@@ -88,8 +87,6 @@ def get(graph_client, url, params=None):
 def download_attachments(graph_client, content, out_dir):
     image_dir = out_dir / 'images'
     attachment_dir = out_dir / 'attachments'
-    # if image_dir.exists():
-    #     shutil.rmtree(image_dir)
 
     class MyHTMLParser(HTMLParser):
         def handle_starttag(self, tag, attrs):
@@ -100,7 +97,8 @@ def download_attachments(graph_client, content, out_dir):
         return ElementTree.tostring(element, encoding='unicode')
 
     def download_image(tag_match):
-        # <img width="843" height="218.5" src="..." data-src-type="image/png" data-fullres-src="..." data-fullres-src-type="image/png" />
+        # <img width="843" height="218.5" src="..." data-src-type="image/png" data-fullres-src="..."
+        # data-fullres-src-type="image/png" />
         parser = MyHTMLParser()
         parser.feed(tag_match[0])
         props = parser.attrs
@@ -113,11 +111,12 @@ def download_attachments(graph_client, content, out_dir):
         with open(image_dir / file_name, "wb") as f:
             f.write(img)
         props['src'] = "images/" + file_name
-        props = {k: v for k, v in props.items() if not 'data-fullres-src' in k}
+        props = {k: v for k, v in props.items() if 'data-fullres-src' not in k}
         return generate_html('img', props)
 
     def download_attachment(tag_match):
-        # <object data-attachment="Trig_Cheat_Sheet.pdf" type="application/pdf" data="..." style="position:absolute;left:528px;top:139px" />
+        # <object data-attachment="Trig_Cheat_Sheet.pdf" type="application/pdf" data="..."
+        # style="position:absolute;left:528px;top:139px" />
         parser = MyHTMLParser()
         parser.feed(tag_match[0])
         props = parser.attrs
@@ -144,7 +143,7 @@ def main_logic():
     code = flask.request.args['code']
 
     token = application.acquire_token_by_authorization_code(code, scopes=scopes,
-                                                             redirect_uri=redirect_uri)
+                                                            redirect_uri=redirect_uri)
     graph_client = OAuth2Session(token=token)
 
     notebooks = get_json(graph_client, f'{graph_url}/me/onenote/notebooks')
@@ -184,7 +183,10 @@ def main_logic():
                         f.write(content)
 
     print("Done!")
-    return flask.render_template_string('<html><head><title>Done</title></head><body><p1><b>Done</b></p1></body></html>')
+    return flask.render_template_string('<html>'
+                                        '<head><title>Done</title></head>'
+                                        '<body><p1><b>Done</b></p1></body>'
+                                        '</html>')
 
 
 if __name__ == "__main__":
