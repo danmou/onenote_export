@@ -1,6 +1,3 @@
-client_id = '...'
-secret = '...'
-
 import os
 import random
 import re
@@ -14,6 +11,7 @@ from xml.etree import ElementTree
 
 import flask
 import msal
+import yaml
 from requests_oauthlib import OAuth2Session
 
 output_path = Path('output')
@@ -26,10 +24,13 @@ app = flask.Flask(__name__)
 app.debug = True
 app.secret_key = os.urandom(16)
 
+with open('config.yaml') as f:
+    config = yaml.safe_load(f)
+
 application = msal.ConfidentialClientApplication(
-    client_id,
+    config['client_id'],
     authority=authority_url,
-    client_credential=secret
+    client_credential=config['secret']
 )
 
 
