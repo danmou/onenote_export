@@ -12,6 +12,7 @@ from xml.etree import ElementTree
 import flask
 import msal
 import yaml
+from pathvalidate import sanitize_filename
 from requests_oauthlib import OAuth2Session
 
 output_path = Path('output')
@@ -162,7 +163,7 @@ def main_logic():
             level_dirs = [None]*4
             for order, page in pages:
                 level = page['level']
-                page_title = f'{order}_{page["title"]}'
+                page_title = sanitize_filename(f'{order}_{page["title"]}')
                 print(f'    Opening page {page_title}')
                 if level == 0:
                     out_dir = output_path / nb_name / sec_name / page_title
