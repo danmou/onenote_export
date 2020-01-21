@@ -79,6 +79,9 @@ def get(graph_client, url, params=None):
             # at the time of the request."
             print('        Error 500, skipping this page.')
             return None
+        elif resp.status_code == 504:
+            print('        Error 504, skipping this page.')
+            return None
         else:
             resp.raise_for_status()
             return resp
@@ -125,11 +128,13 @@ def download_attachments(graph_client, content, out_dir):
         if (attachment_dir / file_name).exists():
             print(f'      Attachment {file_name} already downloaded; skipping.')
         else:
-            data = get(graph_client, data_url).content
-            print(f'      Downloaded attachment {file_name} of {len(data)} bytes.')
-            attachment_dir.mkdir(exist_ok=True)
-            with open(attachment_dir / file_name, "wb") as f:
-                f.write(data)
+            req = get(graph_client, data_url)
+            if req != None:
+                data = req.content
+                print(f'      Downloaded attachment {file_name} of {len(data)} bytes.')
+                attachment_dir.mkdir(exist_ok=True)
+                with open(attachment_dir / file_name, "wb") as f:
+                    f.write(data)
         props['data'] = "attachments/" + file_name
         return generate_html('object', props)
 
