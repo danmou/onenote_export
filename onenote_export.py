@@ -181,6 +181,43 @@ def main_logic():
                     content = download_attachments(graph_client, content, out_dir)
                     with open(out_html, "w", encoding='utf-8') as f:
                         f.write(content)
+        section_groups = get_json(graph_client, nb['sectionGroupsUrl'])
+        print(f'  Got {len(section_groups)} section groups.')
+        for secg in section_groups:
+            secg_name = secg["displayName"]
+            print(f'  Opening section group {secg_name}')
+            for key, value in secg.items() :
+                print (key, value)
+            sections = get_json(graph_client, secg['sectionsUrl'])
+            print(f'    Got {len(sections)} sections.')
+            for sec in sections:
+                sec_name = sec["displayName"]
+                print(f'  Opening section {sec_name}')
+                pages = get_json(graph_client, sec['pagesUrl'] + '?pagelevel=true')
+                print(f'    Got {len(pages)} pages.')
+                pages = sorted([(page['order'], page) for page in pages])
+                level_dirs = [None]*4
+                for order, page in pages:
+                    level = page['level']
+                    page_title = sanitize_filename(f'{order}_{page["title"]}', platform='auto')
+                    print(f'    Opening page {page_title}')
+                    if level == 0:
+                        out_dir = output_path / nb_name / secg_name / sec_name / page_title
+                    else:
+                        out_dir = level_dirs[level - 1] / page_title
+                    level_dirs[level] = out_dir
+                    out_html = out_dir / 'main.html'
+                    if out_html.exists():
+                        print('      HTML file already exists; skipping this page')
+                        continue
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    response = get(graph_client, page['contentUrl'])
+                    if response is not None:
+                        content = response.text
+                        print(f'      Got content of length {len(content)}')
+                        content = download_attachments(graph_client, content, out_dir)
+                        with open(out_html, "w", encoding='utf-8') as f:
+                            f.write(content)
 
     print("Done!")
     return flask.render_template_string('<html>'
