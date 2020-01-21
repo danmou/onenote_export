@@ -179,7 +179,7 @@ def main_logic():
                     content = response.text
                     print(f'      Got content of length {len(content)}')
                     content = download_attachments(graph_client, content, out_dir)
-                    with open(out_html, "w") as f:
+                    with open(out_html, "w", encoding='utf-8') as f:
                         f.write(content)
 
     print("Done!")
