@@ -80,6 +80,9 @@ def get(graph_client, url, params=None, indent=0):
             # at the time of the request."
             indent_print(indent, 'Error 500, skipping this page.')
             return None
+        elif resp.status_code == 504:
+            indent_print(indent, 'Request timed out, probably due to a large attachment. Skipping.')
+            return None
         else:
             resp.raise_for_status()
             return resp
@@ -106,7 +109,10 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         image_url = props.get('data-fullres-src', props['src'])
         image_type = props.get('data-fullres-src-type', props['data-src-type']).split("/")[-1]
         file_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10)) + '.' + image_type
-        img = get(graph_client, image_url).content
+        req = get(graph_client, image_url, indent=indent)
+        if req is None:
+            return tag_match[0]
+        img = req.content
         indent_print(indent, f'Downloaded image of {len(img)} bytes.')
         image_dir.mkdir(exist_ok=True)
         with open(image_dir / file_name, "wb") as f:
@@ -126,7 +132,10 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         if (attachment_dir / file_name).exists():
             indent_print(indent, f'Attachment {file_name} already downloaded; skipping.')
         else:
-            data = get(graph_client, data_url).content
+            req = get(graph_client, data_url, indent=indent)
+            if req is None:
+                return tag_match[0]
+            data = req.content
             indent_print(indent, f'Downloaded attachment {file_name} of {len(data)} bytes.')
             attachment_dir.mkdir(exist_ok=True)
             with open(attachment_dir / file_name, "wb") as f:
