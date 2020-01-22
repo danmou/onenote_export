@@ -164,6 +164,17 @@ def download_notebooks(graph_client, path, select=None, indent=0):
         section_groups = get_json(graph_client, nb['sectionGroupsUrl'])
         indent_print(indent + 1, f'Got {len(sections)} sections and {len(section_groups)} section groups.')
         download_sections(graph_client, sections, path / nb_name, select, indent=indent + 1)
+        download_section_groups(graph_client, section_groups, path / nb_name, select, indent=indent + 1)
+
+
+def download_section_groups(graph_client, section_groups, path, select=None, indent=0):
+    section_groups, select = filter_items(section_groups, select, 'section groups', indent)
+    for sg in section_groups:
+        sg_name = sg["displayName"]
+        indent_print(indent, f'Opening section group {sg_name}')
+        sections = get_json(graph_client, sg['sectionsUrl'])
+        indent_print(indent + 1, f'Got {len(sections)} sections.')
+        download_sections(graph_client, sections, path / sg_name, select, indent=indent + 1)
 
 
 def download_sections(graph_client, sections, path, select=None, indent=0):
