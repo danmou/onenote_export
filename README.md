@@ -26,6 +26,20 @@ The first time you do it, you will also have to accept that the app can read you
 (This does not give any third parties access to your data, as long as you don't share the client id 
 and secret you created on the Azure portal). After this, go back to the terminal to follow the progress.
 
+To change the destination directory use the `--outdir` option:
+```bash
+python onenote_export.py --outdir /path/to/outdir
+```
+
+To download only a subset of your notes, use the `--select` option:
+```bash
+# Download one notebook
+python onenote_export.py --select 'mynotebook'
+# All matrix-related notes in the 'Linear Algebra' section of the 'Math' notebook.
+python onenote_export.py --select 'math/linear algebra/*matrix*'
+```
+Select is case insensitive and supports wildcards.
+
 ## Output
 The notebooks will each become a subdirectory of the `output` folder, with further subdirectories 
 for the sections within each notebook and the pages within each section. Each page is a directory 

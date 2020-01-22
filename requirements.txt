@@ -1,3 +1,4 @@
+click
 flask
 msal
 pathvalidate
