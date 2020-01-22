@@ -202,7 +202,7 @@ def download_pages(graph_client, pages, path, select=None, indent=0):
     level_dirs = [None] * 4
     for order, page in pages:
         level = page['level']
-        page_title = sanitize_filename(f'{order}_{page["title"]}', platform='auto')
+        page_title = sanitize_filename(f'{order} {page["title"]}', platform='auto')
         indent_print(indent, f'Opening page {page_title}')
         if level == 0:
             page_dir = path / page_title
