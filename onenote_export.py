@@ -143,7 +143,8 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         props['data'] = "attachments/" + file_name
         return generate_html('object', props)
 
-    content = re.sub(r"<img .*?\/>", download_image, content, flags=re.DOTALL)
+    #content = re.sub(r"<img .*?\/>", download_image, content, flags=re.DOTALL)
+    content = re.sub(r'<img .*?"image\/png" \/>', download_image, content, flags=re.DOTALL)
     content = re.sub(r"<object .*?\/>", download_attachment, content, flags=re.DOTALL)
     return content
 
@@ -181,10 +182,18 @@ def download_section_groups(graph_client, section_groups, path, select=None, ind
     for sg in section_groups:
         sg_name = sg["displayName"]
         indent_print(indent, f'Opening section group {sg_name}')
+
+        # get section and section_groups
         sections = get_json(graph_client, sg['sectionsUrl'])
-        indent_print(indent + 1, f'Got {len(sections)} sections.')
+        section_groups = get_json(graph_client, sg['sectionGroupsUrl'])
+
+        #indent_print(indent + 1, f'Got {len(sections)} sections.')
+        indent_print(indent + 1, f'Got {len(sections)} sections and {len(section_groups)} section groups.')
         download_sections(graph_client, sections, path / sg_name, select, indent=indent + 1)
 
+        # for multilayer section_group in notebook
+        # for example，<notebook>/<section_gruop>/<section_gruop>/<section>/<pages>
+        download_section_groups(graph_client, section_groups, path / sg_name, select, indent=indent + 1)
 
 def download_sections(graph_client, sections, path, select=None, indent=0):
     sections, select = filter_items(sections, select, 'sections', indent)
