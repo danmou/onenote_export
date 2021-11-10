@@ -105,21 +105,22 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         # data-fullres-src-type="image/png" />
         parser = MyHTMLParser()
         parser.feed(tag_match[0])
-        props = parser.attrs
-        image_url = props.get('data-fullres-src', props['src'])
-        image_type = props.get('data-fullres-src-type', props['data-src-type']).split("/")[-1]
-        file_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10)) + '.' + image_type
-        req = get(graph_client, image_url, indent=indent)
-        if req is None:
-            return tag_match[0]
-        img = req.content
-        indent_print(indent, f'Downloaded image of {len(img)} bytes.')
-        image_dir.mkdir(exist_ok=True)
-        with open(image_dir / file_name, "wb") as f:
-            f.write(img)
-        props['src'] = "images/" + file_name
-        props = {k: v for k, v in props.items() if 'data-fullres-src' not in k}
-        return generate_html('img', props)
+        if hasattr(parser, 'attrs'):
+            props = parser.attrs
+            image_url = props.get('data-fullres-src', props['src'])
+            image_type = props.get('data-fullres-src-type', props['data-src-type']).split("/")[-1]
+            file_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10)) + '.' + image_type
+            req = get(graph_client, image_url, indent=indent)
+            if req is None:
+                return tag_match[0]
+            img = req.content
+            indent_print(indent, f'Downloaded image of {len(img)} bytes.')
+            image_dir.mkdir(exist_ok=True)
+            with open(image_dir / file_name, "wb") as f:
+                f.write(img)
+            props['src'] = "images/" + file_name
+            props = {k: v for k, v in props.items() if 'data-fullres-src' not in k}
+            return generate_html('img', props)
 
     def download_attachment(tag_match):
         # <object data-attachment="Trig_Cheat_Sheet.pdf" type="application/pdf" data="..."
