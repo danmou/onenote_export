@@ -1,3 +1,22 @@
+全面转向语雀后，原来 onenote 中的大量笔记需要自动整理并上传到语雀。
+
+找到 Danmou/onenote_export 能很好的下载笔记，但是生成出来的格式直接上传到语雀并不友好，需要做一些整理。于是写了个脚本  rename.py 整理格式，再打zip包后直接导入就比较完美了。
+
+*基本上是目前最友好的 onenote 导出到 语雀 的解决方案了*
+
+
+# 将 onenote_export 下载的笔记并整理好格式后上传到语雀
+在原来的GIT基础上，增加整理目录的功能，使得可以直接上传到语雀
+
+1. 使用原来的脚本下载完笔记之后，下载的笔记会生成到 output 目录中
+2. 使用 python rename.py output/{My Notebook Name} 整理目录和图片
+3. 把笔记打成一个 zip 包
+4. 语雀网页上使用《新建知识库 - 导入 - 从html包导入》，完美导入。
+
+
+
+# 以下是原 GIT 下载onenote笔记的教程
+
 This Python script exports all the OneNote notebooks linked to your Microsoft account to HTML files.
 
 ## Setup
