@@ -19,7 +19,7 @@ from requests_oauthlib import OAuth2Session
 graph_url = 'https://graph.microsoft.com/v1.0'
 authority_url = 'https://login.microsoftonline.com/common'
 scopes = ['Notes.Read', 'Notes.Read.All']
-redirect_uri = 'http://localhost:5000/getToken'
+redirect_uri = 'http://localhost:50000/getToken'
 
 app = flask.Flask(__name__)
 app.debug = True
@@ -250,7 +250,7 @@ def main_logic():
 def main_command(select, outdir):
     app.config['select_path'] = [x for x in select.split('/') if x]
     app.config['output_path'] = Path(outdir)
-    app.run()
+    app.run(host='localhost', port=50000, debug=True)
 
 
 if __name__ == "__main__":
