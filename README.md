@@ -7,7 +7,7 @@ In order to run the script, you must first do the following:
 3. Select "Azure Active Directory" and then "App registrations" under "Manage".
 4. Select "New registration". Choose any name, set "Supported account types" to "Accounts in any 
    organizational directory and personal Microsoft accounts" and under "Redirect URI", select Web 
-   and enter `http://localhost:5000/getToken`. Register.
+   and enter `http://localhost:50000/getToken`. Register.
 5. Copy "Application (client) ID" and paste it as `client_id` in `config.yaml`.
 6. Select "Certificates & secrets" under "Manage". Press "New client secret", choose a name and 
    confirm.
@@ -29,8 +29,8 @@ In order to run the script, you must first do the following:
 
 ## Running
 In a terminal, navigate to the directory where this script is located and run it using 
-`python onenote_export.py`. This will start a local web server on port 5000. 
-In your browser navigate to http://localhost:5000 and log in to your Microsoft account. 
+`python onenote_export.py`. This will start a local web server on port 50000. 
+In your browser navigate to http://localhost:50000 and log in to your Microsoft account. 
 The first time you do it, you will also have to accept that the app can read your OneNote notes. 
 (This does not give any third parties access to your data, as long as you don't share the client id 
 and secret you created on the Azure portal). After this, go back to the terminal to follow the progress.
@@ -60,4 +60,4 @@ Microsoft limits how many requests you can do within a given time period. Theref
 notes you might eventually see messages like this in the terminal: "Too many requests, waiting 20s and 
 trying again." This is not a problem, but it means the entire process can take a while. Also, the login 
 session can expire after a while, which results in a TokenExpiredError. If this happens, simply reload 
-`http://localhost:5000` and the script will continue (skipping the files it already downloaded).
+`http://localhost:50000` and the script will continue (skipping the files it already downloaded).
