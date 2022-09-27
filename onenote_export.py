@@ -15,11 +15,12 @@ import msal
 import yaml
 from pathvalidate import sanitize_filename
 from requests_oauthlib import OAuth2Session
+from notion_import import *
 
 graph_url = 'https://graph.microsoft.com/v1.0'
 authority_url = 'https://login.microsoftonline.com/common'
 scopes = ['Notes.Read', 'Notes.Read.All']
-redirect_uri = 'http://localhost:5000/getToken'
+redirect_uri = 'http://localhost:50000/getToken'
 
 app = flask.Flask(__name__)
 app.debug = True
@@ -209,7 +210,11 @@ def download_pages(graph_client, pages, path, select=None, indent=0):
         else:
             page_dir = level_dirs[level - 1] / page_title
         level_dirs[level] = page_dir
-        download_page(graph_client, page['contentUrl'], page_dir, indent=indent + 1)
+        content = download_page(graph_client, page['contentUrl'], page_dir, indent=indent + 1)
+        if content is None:
+            continue
+        create_page(page_title, content, str(page_dir).replace(str(app.config['output_path']), ''))
+        exit(1)
 
 
 def download_page(graph_client, page_url, path, indent=0):
@@ -225,6 +230,7 @@ def download_page(graph_client, page_url, path, indent=0):
         content = download_attachments(graph_client, content, path, indent=indent)
         with open(out_html, "w", encoding='utf-8') as f:
             f.write(content)
+        return content
 
 
 @app.route("/getToken")
@@ -250,7 +256,8 @@ def main_logic():
 def main_command(select, outdir):
     app.config['select_path'] = [x for x in select.split('/') if x]
     app.config['output_path'] = Path(outdir)
-    app.run()
+    init_notion(config)
+    app.run(host='localhost', port=50000, debug=True)
 
 
 if __name__ == "__main__":

@@ -1,2 +1,5 @@
 client_id: '...'
 secret: '...'
+notion_enabled: true
+notion_token: '...'
+notion_root_page_id: '...'

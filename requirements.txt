@@ -4,3 +4,5 @@ msal
 pathvalidate
 pyyaml
 requests_oauthlib
+notion-client
+markdownify
