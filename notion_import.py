@@ -1,65 +1,48 @@
-from notion_client import Client
-import logging
-import markdownify
+import re
+import time
 
-notion: Client
+from md2notion.upload import upload
+from notion.block import PageBlock
+from notion.client import NotionClient
+from urllib3.util import Retry
+
+client: NotionClient
 root_page_id: str
 notion_enabled = True
 page_ids = {}
 
 
 def init_notion(config):
-    global notion, root_page_id, notion_enabled
+    global client, root_page_id, notion_enabled
     root_page_id = config['notion_root_page_id']
     notion_enabled = config['notion_enabled']
     if not notion_enabled:
         return
-    notion = Client(auth=config['notion_token'], log_level=logging.DEBUG)
+    client = NotionClient(token_v2=config['notion_token'], client_specified_retry=retry(), start_monitoring=True,
+                          monitor=True)
 
 
-def create_page(title, content="", path=None):
-    if content:
-        content = markdownify.markdownify(content)
+def create_page(path, md_file=None):
     if not notion_enabled:
         return
-    if title is None:
-        title = "Untitled"
     path = clean_path(path)
+    title = path.split("/")[-1]
+    title = re.sub(r'^[0-9]\s', '', title)
+    if title == "":
+        title = "Untitled"
+
     parent_id = get_parent_page_id(path)
-    page = notion.pages.create(**{
-        "parent": {
-            "page_id": parent_id
-        },
-        "properties": {
-            "title": {
-                "title": [
-                    {
-                        "type": "text",
-                        "text": {
-                            "content": title
-                        }
-                    }
-                ]
-            }
-        },
-        "children": [
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {
-                                "content": content
-                            }
-                        }
-                    ]
-                }
-            }
-        ]
-    })
-    page_ids[path] = page["id"]
+    print("Creating page: " + title + " in " + parent_id)
+    parent_page = client.get_block(parent_id)
+
+    page = parent_page.children.add_new(PageBlock, title=title)
+    time.sleep(2)
+    if md_file:
+        print('Uploading', md_file)
+        with open(md_file, "r", encoding="utf-8") as f:
+            upload(f, page)
+        time.sleep(2)
+    page_ids[path] = page.id
 
 
 def get_parent_page_id(path):
@@ -73,11 +56,28 @@ def get_parent_page_id(path):
     for i in range(len(pages)):
         page_path = "/".join(pages[:i + 1])
         if page_path not in page_ids:
-            title = pages[i] if pages[i] != 0 else "Untitled"
-            create_page(title, "", page_path)
+            create_page(page_path)
 
     return page_ids["/".join(pages)]
 
 
 def clean_path(path):
     return "/".join(list(filter(None, path.split("/"))))
+
+
+def retry():
+    return Retry(
+        5,
+        backoff_factor=20,
+        status_forcelist=(429,),
+        # CAUTION: adding 'POST' to this list which is not technically idempotent
+        method_whitelist=(
+            "POST",
+            "HEAD",
+            "TRACE",
+            "GET",
+            "PUT",
+            "OPTIONS",
+            "DELETE",
+        )
+    )

@@ -1,4 +1,4 @@
-This Python script exports all the OneNote notebooks linked to your Microsoft account to HTML files.
+This Python script exports all the OneNote notebooks linked to your Microsoft account to HTML and Markdown files, also imports them to Notion.so.
 
 ## Setup
 In order to run the script, you must first do the following:
@@ -17,6 +17,15 @@ In order to run the script, you must first do the following:
    permissions".
 9. Make sure you have Python 3.7 (or newer) installed and install the dependencies using the command 
    `pip install -r requirements.txt`.
+
+## Import to Notion.so
+1. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in (non-guest) session on Notion.so.
+2. Paste it as `notion_token` in [config.yaml](./config.yaml).
+3. Create a new page in Notion.so and copy its URL or page id, ex: for URL `https://www.notion.so/Creating-Page-Sample-ee18b8779ae54f358b09221d6665ee15` id is `ee18b8779ae54f358b09221d6665ee15`.
+4. Paste it as `notion_root_page_id` in  [config.yaml](./config.yaml).
+5. Enable the `config.yaml` option in  [config.yaml](./config.yaml).
+6. Notice the script is using https://github.com/Cobertos/md2notion, https://github.com/jamalex/notion-py and https://github.com/matthewwithanm/python-markdownify to import the markdown files to Notion.so. Although not required; read through their documentation to understand how to use them.
+7. A known issue is currently still open in https://github.com/Cobertos/md2notion/issues/40, the workaround is already implemented in the script for the error `requests.exceptions.HTTPError: Invalid input.`
 
 ## Running
 In a terminal, navigate to the directory where this script is located and run it using 
@@ -38,7 +47,7 @@ python onenote_export.py --select 'mynotebook'
 # All matrix-related notes in the 'Linear Algebra' section of the 'Math' notebook.
 python onenote_export.py --select 'math/linear algebra/*matrix*'
 ```
-Select is case insensitive and supports wildcards.
+Select is case-insensitive and supports wildcards.
 
 ## Output
 The notebooks will each become a subdirectory of the `output` folder, with further subdirectories 

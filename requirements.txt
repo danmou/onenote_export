@@ -4,5 +4,6 @@ msal
 pathvalidate
 pyyaml
 requests_oauthlib
-notion-client
+md2notion
+notion-cobertos-fork
 markdownify
