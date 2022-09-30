@@ -8,6 +8,7 @@ from fnmatch import fnmatch
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree
+import markdownify
 
 import click
 import flask
@@ -15,11 +16,12 @@ import msal
 import yaml
 from pathvalidate import sanitize_filename
 from requests_oauthlib import OAuth2Session
+from notion_import import *
 
 graph_url = 'https://graph.microsoft.com/v1.0'
 authority_url = 'https://login.microsoftonline.com/common'
 scopes = ['Notes.Read', 'Notes.Read.All']
-redirect_uri = 'http://localhost:5000/getToken'
+redirect_uri = 'http://localhost:50000/getToken'
 
 app = flask.Flask(__name__)
 app.debug = True
@@ -219,12 +221,18 @@ def download_page(graph_client, page_url, path, indent=0):
         return
     path.mkdir(parents=True, exist_ok=True)
     response = get(graph_client, page_url, indent=indent)
-    if response is not None:
-        content = response.text
-        indent_print(indent, f'Got content of length {len(content)}')
-        content = download_attachments(graph_client, content, path, indent=indent)
-        with open(out_html, "w", encoding='utf-8') as f:
-            f.write(content)
+    if response is None:
+        return
+    content = response.text
+    indent_print(indent, f'Got content of length {len(content)}')
+    content = download_attachments(graph_client, content, path, indent=indent)
+    with open(out_html, "w", encoding='utf-8') as f:
+        f.write(content)
+    out_md = path / 'main.md'
+    content = markdownify.markdownify(content.replace('&#10;', ''))
+    with open(out_md, "w", encoding='utf-8') as f:
+        f.write(content)
+    create_page(str(path).replace(str(app.config['output_path']), ''), out_md)
 
 
 @app.route("/getToken")
@@ -250,7 +258,8 @@ def main_logic():
 def main_command(select, outdir):
     app.config['select_path'] = [x for x in select.split('/') if x]
     app.config['output_path'] = Path(outdir)
-    app.run()
+    init_notion(config)
+    app.run(host='localhost', port=50000, debug=True)
 
 
 if __name__ == "__main__":
