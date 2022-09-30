@@ -1,10 +1,14 @@
 import re
 import time
+import logging
 
 from md2notion.upload import upload
 from notion.block import PageBlock
 from notion.client import NotionClient
 from urllib3.util import Retry
+
+# logging.basicConfig(level=logging.DEBUG)
+# logging.getLogger("urllib3").setLevel(logging.DEBUG)
 
 client: NotionClient
 root_page_id: str
@@ -18,8 +22,7 @@ def init_notion(config):
     notion_enabled = config['notion_enabled']
     if not notion_enabled:
         return
-    client = NotionClient(token_v2=config['notion_token'], client_specified_retry=retry(), start_monitoring=True,
-                          monitor=True)
+    client = NotionClient(token_v2=config['notion_token'], client_specified_retry=retry())
 
 
 def create_page(path, md_file=None):
@@ -27,7 +30,7 @@ def create_page(path, md_file=None):
         return
     path = clean_path(path)
     title = path.split("/")[-1]
-    title = re.sub(r'^[0-9]\s', '', title)
+    title = re.sub(r'^[0-9]+\s', '', title)
     if title == "":
         title = "Untitled"
 
@@ -36,12 +39,10 @@ def create_page(path, md_file=None):
     parent_page = client.get_block(parent_id)
 
     page = parent_page.children.add_new(PageBlock, title=title)
-    time.sleep(2)
     if md_file:
         print('Uploading', md_file)
         with open(md_file, "r", encoding="utf-8") as f:
             upload(f, page)
-        time.sleep(2)
     page_ids[path] = page.id
 
 
@@ -67,9 +68,9 @@ def clean_path(path):
 
 def retry():
     return Retry(
-        5,
+        50,
         backoff_factor=20,
-        status_forcelist=(429,),
+        status_forcelist=(429, 502, 503, 504),
         # CAUTION: adding 'POST' to this list which is not technically idempotent
         method_whitelist=(
             "POST",
