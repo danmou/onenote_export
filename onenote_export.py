@@ -1,57 +1,30 @@
+import atexit
+import configparser
+import json
 import os
 import random
 import re
 import string
+import sys
 import time
 import uuid
+
 from fnmatch import fnmatch
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree
 
 import click
-import flask
 import msal
-import yaml
 from pathvalidate import sanitize_filename
 from requests_oauthlib import OAuth2Session
 
-graph_url = 'https://graph.microsoft.com/v1.0'
-authority_url = 'https://login.microsoftonline.com/common'
-scopes = ['Notes.Read', 'Notes.Read.All']
-redirect_uri = 'http://localhost:5000/getToken'
-
-app = flask.Flask(__name__)
-app.debug = True
-app.secret_key = os.urandom(16)
-
-with open('config.yaml') as f:
-    config = yaml.safe_load(f)
-
-application = msal.ConfidentialClientApplication(
-    config['client_id'],
-    authority=authority_url,
-    client_credential=config['secret']
-)
-
-
-@app.route("/")
-def main():
-    resp = flask.Response(status=307)
-    resp.headers['location'] = '/login'
-    return resp
-
-
-@app.route("/login")
-def login():
-    auth_state = str(uuid.uuid4())
-    flask.session['state'] = auth_state
-    authorization_url = application.get_authorization_request_url(scopes, state=auth_state,
-                                                                  redirect_uri=redirect_uri)
-    resp = flask.Response(status=307)
-    resp.headers['location'] = authorization_url
-    return resp
-
+GRAPH_URL = 'https://graph.microsoft.com/v1.0'
+AUTHORITY_URL = 'https://login.microsoftonline.com/common'
+SCOPES = ['Notes.Read', 'Notes.Read.All']
+CONFIG = {
+        'client_id': '47b7fb44-080f-4031-ac79-9aed74cf99d9',
+}
 
 def get_json(graph_client, url, params=None, indent=0):
     values = []
@@ -75,9 +48,9 @@ def get(graph_client, url, params=None, indent=0):
             time.sleep(20)
         elif resp.status_code == 500:
             # In my case, one specific note page consistently gave this status
-            # code when trying to get the content. The error was "19999:
+            # code when trying to get the content. The error was '19999:
             # Something failed, the API cannot share any more information
-            # at the time of the request."
+            # at the time of the request.'
             indent_print(indent, 'Error 500, skipping this page.')
             return None
         elif resp.status_code == 504:
@@ -101,13 +74,13 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         return ElementTree.tostring(element, encoding='unicode')
 
     def download_image(tag_match):
-        # <img width="843" height="218.5" src="..." data-src-type="image/png" data-fullres-src="..."
-        # data-fullres-src-type="image/png" />
+        # <img width='843' height='218.5' src='...' data-src-type='image/png' data-fullres-src='...'
+        # data-fullres-src-type='image/png' />
         parser = MyHTMLParser()
         parser.feed(tag_match[0])
         props = parser.attrs
         image_url = props.get('data-fullres-src', props['src'])
-        image_type = props.get('data-fullres-src-type', props['data-src-type']).split("/")[-1]
+        image_type = props.get('data-fullres-src-type', props['data-src-type']).split('/')[-1]
         file_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(10)) + '.' + image_type
         req = get(graph_client, image_url, indent=indent)
         if req is None:
@@ -115,15 +88,15 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         img = req.content
         indent_print(indent, f'Downloaded image of {len(img)} bytes.')
         image_dir.mkdir(exist_ok=True)
-        with open(image_dir / file_name, "wb") as f:
+        with open(image_dir / file_name, 'wb') as f:
             f.write(img)
-        props['src'] = "images/" + file_name
+        props['src'] = 'images/' + file_name
         props = {k: v for k, v in props.items() if 'data-fullres-src' not in k}
         return generate_html('img', props)
 
     def download_attachment(tag_match):
-        # <object data-attachment="Trig_Cheat_Sheet.pdf" type="application/pdf" data="..."
-        # style="position:absolute;left:528px;top:139px" />
+        # <object data-attachment='Trig_Cheat_Sheet.pdf' type='application/pdf' data='...'
+        # style='position:absolute;left:528px;top:139px' />
         parser = MyHTMLParser()
         parser.feed(tag_match[0])
         props = parser.attrs
@@ -138,13 +111,13 @@ def download_attachments(graph_client, content, out_dir, indent=0):
             data = req.content
             indent_print(indent, f'Downloaded attachment {file_name} of {len(data)} bytes.')
             attachment_dir.mkdir(exist_ok=True)
-            with open(attachment_dir / file_name, "wb") as f:
+            with open(attachment_dir / file_name, 'wb') as f:
                 f.write(data)
-        props['data'] = "attachments/" + file_name
+        props['data'] = 'attachments/' + file_name
         return generate_html('object', props)
 
-    content = re.sub(r"<img .*?\/>", download_image, content, flags=re.DOTALL)
-    content = re.sub(r"<object .*?\/>", download_attachment, content, flags=re.DOTALL)
+    content = re.sub(r'<img .*?\/>', download_image, content, flags=re.DOTALL)
+    content = re.sub(r'<object .*?\/>', download_attachment, content, flags=re.DOTALL)
     return content
 
 
@@ -163,11 +136,11 @@ def filter_items(items, select, name='items', indent=0):
 
 
 def download_notebooks(graph_client, path, select=None, indent=0):
-    notebooks = get_json(graph_client, f'{graph_url}/me/onenote/notebooks')
+    notebooks = get_json(graph_client, f'{GRAPH_URL}/me/onenote/notebooks')
     indent_print(0, f'Got {len(notebooks)} notebooks.')
     notebooks, select = filter_items(notebooks, select, 'notebooks', indent)
     for nb in notebooks:
-        nb_name = nb["displayName"]
+        nb_name = nb['displayName']
         indent_print(indent, f'Opening notebook {nb_name}')
         sections = get_json(graph_client, nb['sectionsUrl'])
         section_groups = get_json(graph_client, nb['sectionGroupsUrl'])
@@ -179,7 +152,7 @@ def download_notebooks(graph_client, path, select=None, indent=0):
 def download_section_groups(graph_client, section_groups, path, select=None, indent=0):
     section_groups, select = filter_items(section_groups, select, 'section groups', indent)
     for sg in section_groups:
-        sg_name = sg["displayName"]
+        sg_name = sg['displayName']
         indent_print(indent, f'Opening section group {sg_name}')
         sections = get_json(graph_client, sg['sectionsUrl'])
         indent_print(indent + 1, f'Got {len(sections)} sections.')
@@ -189,7 +162,7 @@ def download_section_groups(graph_client, section_groups, path, select=None, ind
 def download_sections(graph_client, sections, path, select=None, indent=0):
     sections, select = filter_items(sections, select, 'sections', indent)
     for sec in sections:
-        sec_name = sec["displayName"]
+        sec_name = sec['displayName']
         indent_print(indent, f'Opening section {sec_name}')
         pages = get_json(graph_client, sec['pagesUrl'] + '?pagelevel=true')
         indent_print(indent + 1, f'Got {len(pages)} pages.')
@@ -223,35 +196,64 @@ def download_page(graph_client, page_url, path, indent=0):
         content = response.text
         indent_print(indent, f'Got content of length {len(content)}')
         content = download_attachments(graph_client, content, path, indent=indent)
-        with open(out_html, "w", encoding='utf-8') as f:
+        with open(out_html, 'w', encoding='utf-8') as f:
             f.write(content)
 
-
-@app.route("/getToken")
-def main_logic():
-    code = flask.request.args['code']
-    token = application.acquire_token_by_authorization_code(code, scopes=scopes,
-                                                            redirect_uri=redirect_uri)
-    graph_client = OAuth2Session(token=token)
-    download_notebooks(graph_client, app.config['output_path'], app.config['select_path'], indent=0)
-    print("Done!")
-    return flask.render_template_string('<html>'
-                                        '<head><title>Done</title></head>'
-                                        '<body><p1><b>Done</b></p1></body>'
-                                        '</html>')
+    print('Done!')
 
 
 @click.command()
+@click.option('-c', '--config', default='$HOME/.config/onenote_export.cfg')
+@click.option('-t', '--cache', default='$HOME/.config/onenote_export.bin')
 @click.option('-s', '--select', default='',
-              help='Only convert a subset of notes, given as a slash-separated path. For example '
-                   '`-p mynotebook` or `-p mynotebook/mysection/mynote`. Wildcards are supported: '
-                   '`-p mynotebook/*/mynote`.')
-@click.option('-o', '--outdir', default='output', help='Path to output directory.')
-def main_command(select, outdir):
-    app.config['select_path'] = [x for x in select.split('/') if x]
-    app.config['output_path'] = Path(outdir)
-    app.run()
+              help='Only convert a subset of notes, given as a slash-separated '
+              'path. For example `-p mynotebook` or `-p '
+              'mynotebook/mysection/mynote`. Wildcards are supported: ' '`-p '
+              'mynotebook/*/mynote`.')
+@click.option('-o', '--outdir', default='onenote_export',
+        help='Path to output directory.')
+def main(config, cache, select, outdir):
+    configuration = configparser.ConfigParser()
+    configuration['DEFAULT'] = CONFIG
+    config_path = os.path.expandvars(config)
+    if os.path.exists(config_path):
+        configuration.read(config_path)
+        atexit.register(lambda: configuration.write(open(config_path, 'w')))
+    configuration = configuration['DEFAULT']
+    # Try to load the cached auth tokens.
+    cache_path = os.path.expandvars(cache)
+    cache = msal.SerializableTokenCache()
+    if os.path.exists(cache_path):
+        cache.deserialize(open(cache_path, 'r').read())
+    atexit.register(lambda: open(cache_path, 'w').write(cache.serialize())
+                            if cache.has_state_changed else None)
+    app = msal.PublicClientApplication(
+        configuration['client_id'],
+        authority=AUTHORITY_URL,
+        token_cache=cache
+    )
 
+    accounts = app.get_accounts()
+    if accounts:
+        # We only support single-account flow.
+        token = app.acquire_token_silent(SCOPES, accounts[0])
+    else:
+        flow = app.initiate_device_flow(scopes=SCOPES)
+        if 'user_code' not in flow:
+            raise ValueError(
+                'Fail to create device flow. Err: %s' %
+                json.dumps(flow, indent=4))
+        print(flow['message'])
+        sys.stdout.flush()
+        input('Press Enter after signing in from another device to proceed, '
+              'CTRL+C to abort.')
+        token = app.acquire_token_by_device_flow(flow)
 
-if __name__ == "__main__":
-    main_command()
+    graph_client = OAuth2Session(token=token)
+
+    download_notebooks(
+            graph_client, Path(outdir),
+            select=[x for x in select.split('/') if x], indent=0)
+
+if __name__ == '__main__':
+    main()
