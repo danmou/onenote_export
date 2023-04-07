@@ -2,10 +2,9 @@ This Python script exports all the OneNote notebooks linked to your Microsoft ac
 
 ## Setup
 
-In order to run the script, you must first do the following:
-1. Clone the repo using `git clone https://github.com/Danmou/onenote_export.git`
-2. Make sure you have Python 3.7 (or newer) installed and install the dependencies using the command 
-   `pip install -r requirements.txt`.
+In order to run the script, you must first install it via
+
+`pip install git+https://github.com/danmarg/onenote_export.git`
 
 If you wish to use your own client ID, go to https://aad.portal.azure.com/ and
 log in with your Microsoft account. Select "Azure Active Directory" and then
