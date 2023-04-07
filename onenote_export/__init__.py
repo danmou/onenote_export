@@ -61,7 +61,7 @@ def get(graph_client, url, params=None, indent=0):
             return resp
 
 
-def download_attachments(graph_client, content, out_dir, indent=0):
+def download_attachments(graph_client, content, out_dir, indent=0, overwrite=False):
     image_dir = out_dir / 'images'
     attachment_dir = out_dir / 'attachments'
 
@@ -94,7 +94,7 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         props = {k: v for k, v in props.items() if 'data-fullres-src' not in k}
         return generate_html('img', props)
 
-    def download_attachment(tag_match):
+    def download_attachment(tag_match, overwrite=False):
         # <object data-attachment='Trig_Cheat_Sheet.pdf' type='application/pdf' data='...'
         # style='position:absolute;left:528px;top:139px' />
         parser = MyHTMLParser()
@@ -102,7 +102,7 @@ def download_attachments(graph_client, content, out_dir, indent=0):
         props = parser.attrs
         data_url = props['data']
         file_name = props['data-attachment']
-        if (attachment_dir / file_name).exists():
+        if (attachment_dir / file_name).exists() and not overwrite:
             indent_print(indent, f'Attachment {file_name} already downloaded; skipping.')
         else:
             req = get(graph_client, data_url, indent=indent)
@@ -135,7 +135,7 @@ def filter_items(items, select, name='items', indent=0):
     return items, select[1:]
 
 
-def download_notebooks(graph_client, path, select=None, indent=0):
+def download_notebooks(graph_client, path, select=None, indent=0, overwrite=False):
     notebooks = get_json(graph_client, f'{GRAPH_URL}/me/onenote/notebooks')
     indent_print(0, f'Got {len(notebooks)} notebooks.')
     notebooks, select = filter_items(notebooks, select, 'notebooks', indent)
@@ -145,31 +145,39 @@ def download_notebooks(graph_client, path, select=None, indent=0):
         sections = get_json(graph_client, nb['sectionsUrl'])
         section_groups = get_json(graph_client, nb['sectionGroupsUrl'])
         indent_print(indent + 1, f'Got {len(sections)} sections and {len(section_groups)} section groups.')
-        download_sections(graph_client, sections, path / nb_name, select, indent=indent + 1)
-        download_section_groups(graph_client, section_groups, path / nb_name, select, indent=indent + 1)
+        download_sections(graph_client, sections, path / nb_name, select,
+                          indent=indent + 1, overwrite=overwrite)
+        download_section_groups(graph_client, section_groups,
+                                path / nb_name, select, indent=indent + 1,
+                                overwrite=overwrite)
 
 
-def download_section_groups(graph_client, section_groups, path, select=None, indent=0):
+def download_section_groups(graph_client, section_groups, path, select=None,
+                            indent=0, overwrite=False):
     section_groups, select = filter_items(section_groups, select, 'section groups', indent)
     for sg in section_groups:
         sg_name = sg['displayName']
         indent_print(indent, f'Opening section group {sg_name}')
         sections = get_json(graph_client, sg['sectionsUrl'])
         indent_print(indent + 1, f'Got {len(sections)} sections.')
-        download_sections(graph_client, sections, path / sg_name, select, indent=indent + 1)
+        download_sections(graph_client, sections, path / sg_name, select,
+                         indent=indent + 1, overwrite=overwrite)
 
 
-def download_sections(graph_client, sections, path, select=None, indent=0):
+def download_sections(graph_client, sections, path, select=None, indent=0,
+                      overwrite=False):
     sections, select = filter_items(sections, select, 'sections', indent)
     for sec in sections:
         sec_name = sec['displayName']
         indent_print(indent, f'Opening section {sec_name}')
         pages = get_json(graph_client, sec['pagesUrl'] + '?pagelevel=true')
         indent_print(indent + 1, f'Got {len(pages)} pages.')
-        download_pages(graph_client, pages, path / sec_name, select, indent=indent + 1)
+        download_pages(graph_client, pages, path / sec_name, select,
+                       indent=indent + 1, overwrite=overwrite)
 
 
-def download_pages(graph_client, pages, path, select=None, indent=0):
+def download_pages(graph_client, pages, path, select=None, indent=0,
+                   overwrite=False):
     pages, select = filter_items(pages, select, 'pages', indent)
     pages = sorted([(page['order'], page) for page in pages])
     level_dirs = [None] * 4
@@ -182,12 +190,13 @@ def download_pages(graph_client, pages, path, select=None, indent=0):
         else:
             page_dir = level_dirs[level - 1] / page_title
         level_dirs[level] = page_dir
-        download_page(graph_client, page['contentUrl'], page_dir, indent=indent + 1)
+        download_page(graph_client, page['contentUrl'], page_dir,
+                      indent=indent + 1, overwrite=overwrite)
 
 
-def download_page(graph_client, page_url, path, indent=0):
+def download_page(graph_client, page_url, path, indent=0, overwrite=False):
     out_html = path / 'main.html'
-    if out_html.exists():
+    if out_html.exists() and not overwrite:
         indent_print(indent, 'HTML file already exists; skipping this page')
         return
     path.mkdir(parents=True, exist_ok=True)
@@ -195,7 +204,8 @@ def download_page(graph_client, page_url, path, indent=0):
     if response is not None:
         content = response.text
         indent_print(indent, f'Got content of length {len(content)}')
-        content = download_attachments(graph_client, content, path, indent=indent)
+        content = download_attachments(graph_client, content, path,
+                                       indent=indent, overwrite=overwrite)
         with open(out_html, 'w', encoding='utf-8') as f:
             f.write(content)
 
@@ -212,7 +222,9 @@ def download_page(graph_client, page_url, path, indent=0):
               'mynotebook/*/mynote`.')
 @click.option('-o', '--outdir', default='onenote_export',
         help='Path to output directory.')
-def main(config, cache, select, outdir):
+@click.option('-f', '--overwrite', default=False,
+        help='Overwrite existing output.')
+def main(config, cache, select, outdir, overwrite):
     configuration = configparser.ConfigParser()
     configuration['DEFAULT'] = CONFIG
     config_path = os.path.expandvars(config)
@@ -253,7 +265,8 @@ def main(config, cache, select, outdir):
 
     download_notebooks(
             graph_client, Path(outdir),
-            select=[x for x in select.split('/') if x], indent=0)
+            select=[x for x in select.split('/') if x],
+            indent=0, overwrite=overwrite)
 
 if __name__ == '__main__':
     main()
