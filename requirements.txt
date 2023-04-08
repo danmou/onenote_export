@@ -1,6 +1,0 @@
-click
-flask
-msal
-pathvalidate
-pyyaml
-requests_oauthlib
